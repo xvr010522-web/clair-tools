@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>CLAIR TOOLS</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #080808;
+    --surface: #0f0f0f;
+    --border: #1c1c1c;
+    --border2: #252525;
+    --text: #e8e8e8;
+    --muted: #444;
+    --muted2: #2a2a2a;
+    --yellow: #f5c518;
+    --green: #3ddc84;
+    --red: #ff4d4d;
+    --blue: #4d9eff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Mono', monospace; min-height: 100vh; padding-bottom: 60px; }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 24px; border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; background: var(--bg); z-index: 50;
+  }
+  .topbar-logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.1rem; letter-spacing: -0.04em; color: #fff; }
+  .topbar-logo span { color: var(--yellow); }
+
+  /* ── TABS ── */
+  .tabs { display: flex; gap: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
+  .tab {
+    padding: 7px 18px; border: none; border-radius: 7px; cursor: pointer;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.7rem;
+    background: transparent; color: var(--muted); transition: all 0.15s; white-space: nowrap;
+  }
+  .tab:hover { color: #aaa; }
+  .tab.active { background: var(--border2); color: #fff; }
+
+  /* ── PAGES ── */
+  .page { display: none; padding: 24px; }
+  .page.active { display: block; }
+
+  /* ── SHARED COMPONENTS ── */
+  select, input[type="text"] {
+    background: var(--bg); border: 1px solid var(--border2); color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 0.7rem; padding: 7px 9px;
+    border-radius: 7px; width: 100%; outline: none; transition: border-color 0.15s;
+  }
+  select:focus, input:focus { border-color: #444; }
+  textarea {
+    background: var(--bg); border: 1px solid var(--border2); color: var(--text);
+    font-family: 'DM Mono', monospace; font-size: 0.7rem; padding: 9px 11px;
+    border-radius: 7px; width: 100%; resize: vertical; min-height: 64px;
+    line-height: 1.6; outline: none; transition: border-color 0.15s;
+  }
+  textarea:focus { border-color: #444; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; margin-bottom: 14px; }
+  .panel-title { font-size: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 100px; }
+  .field label { font-size: 0.55rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; }
+  .btn {
+    padding: 9px 16px; border: none; border-radius: 8px;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.72rem;
+    cursor: pointer; transition: opacity 0.15s, transform 0.1s; white-space: nowrap;
+  }
+  .btn:hover { opacity: 0.85; } .btn:active { transform: scale(0.97); } .btn:disabled { opacity: 0.2; cursor: not-allowed; transform: none; }
+  .btn-white { background: #fff; color: #000; }
+  .btn-outline { background: transparent; color: #888; border: 1px solid var(--border2); }
+  .btn-outline:hover { border-color: #555; color: #ddd; }
+  .btn-danger { background: transparent; color: var(--red); border: 1px solid #2a1010; font-size: 0.65rem; padding: 7px 12px; }
+  .btn-danger:hover { border-color: var(--red); }
+  .btn-green { background: var(--green); color: #000; }
+  .btn-yellow { background: var(--yellow); color: #000; padding: 9px 22px; font-size: 0.78rem; }
+  .spacer { flex: 1; }
+  .drop-zone {
+    border: 2px dashed var(--border2); border-radius: 12px; padding: 36px 20px;
+    text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; margin-bottom: 14px;
+  }
+  .drop-zone:hover { border-color: #444; background: #0d0d0d; }
+  .drop-zone.dragover { border-color: #fff; background: #111; }
+  .drop-zone input { display: none; }
+  .drop-icon { font-size: 2rem; margin-bottom: 8px; }
+  .drop-text { font-size: 0.7rem; color: var(--muted); line-height: 1.7; }
+  .drop-text b { color: #aaa; }
+  .toolbar { display: flex; gap: 8px; margin-bottom: 14px; align-items: center; flex-wrap: wrap; }
+
+  /* ── LOG (shared) ── */
+  .log-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: #050505; border-top: 1px solid var(--border);
+    height: 40px; display: flex; align-items: center;
+    padding: 0 18px; gap: 10px; z-index: 100; overflow: hidden; transition: height 0.2s;
+  }
+  .log-bar.open { height: 200px; align-items: flex-start; padding-top: 10px; }
+  .log-toggle { font-size: 0.56rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; cursor: pointer; white-space: nowrap; flex-shrink: 0; user-select: none; }
+  .log-toggle:hover { color: #888; }
+  .log-scroll { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+  .log-line { font-size: 0.58rem; line-height: 1.5; white-space: nowrap; }
+  .log-line .ts { color: #2a2a2a; }
+  .log-line.info .msg { color: #555; }
+  .log-line.ok .msg { color: var(--green); }
+  .log-line.err .msg { color: var(--red); }
+  .log-line.warn .msg { color: var(--yellow); }
+
+  /* ══════════════════════════════════════
+     TAB 1 — EXTRACT + CLEAN
+  ══════════════════════════════════════ */
+  .video-queue { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+  .vid-item { background: #0d0d0d; border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; display: flex; align-items: center; gap: 8px; }
+  .vid-name { flex: 1; font-size: 0.68rem; color: #aaa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .vid-size { font-size: 0.6rem; color: var(--muted); white-space: nowrap; }
+  .vid-remove { background: none; border: none; color: #333; font-size: 1rem; cursor: pointer; padding: 0 4px; transition: color 0.15s; }
+  .vid-remove:hover { color: #fff; }
+
+  .video-sections { display: flex; flex-direction: column; gap: 14px; }
+  .video-section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+  .vsec-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  .vsec-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 50%; }
+  .vsec-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .vsec-stats { font-size: 0.6rem; color: var(--muted); display: flex; gap: 8px; }
+  .stat { display: flex; gap: 4px; align-items: center; }
+  .stat-dot2 { width: 6px; height: 6px; border-radius: 50%; }
+  .prog-wrap { display: flex; flex-direction: column; gap: 4px; }
+  .prog-bg { height: 3px; background: var(--border); border-radius: 99px; overflow: hidden; }
+  .prog-fill { height: 100%; background: #fff; width: 0%; transition: width 0.3s; border-radius: 99px; }
+  .prog-label { font-size: 0.6rem; color: var(--muted); }
+  .frame-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+  .f-card { background: #0d0d0d; border: 2px solid var(--border); border-radius: 9px; overflow: hidden; display: flex; flex-direction: column; transition: border-color 0.15s; }
+  .f-card.selected { border-color: #fff; }
+  .f-card.cleaning { border-color: #3a3000; }
+  .f-card.done { border-color: #0a2a0a; }
+  .f-card.error { border-color: #2a0a0a; }
+  .f-thumb-wrap { aspect-ratio: 9/16; background: #111; position: relative; cursor: pointer; overflow: hidden; }
+  .f-thumb { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+  .f-spinner { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); }
+  .f-spin { width: 18px; height: 18px; border: 2px solid #333; border-top-color: var(--yellow); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .f-done-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.2); font-size: 1.1rem; }
+  .f-check { position: absolute; top: 4px; right: 4px; width: 15px; height: 15px; border-radius: 50%; border: 1.5px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; font-size: 0.45rem; color: transparent; transition: all 0.12s; pointer-events: none; }
+  .f-card.selected .f-check { background: #fff; border-color: #fff; color: #000; }
+  .f-info { padding: 4px 6px; display: flex; flex-direction: column; gap: 2px; }
+  .f-ts { font-size: 0.54rem; color: var(--muted); }
+  .f-badge { font-size: 0.5rem; padding: 2px 5px; border-radius: 99px; text-align: center; }
+  .b-raw { background: var(--border); color: var(--muted); }
+  .b-cleaning { background: #1a1400; color: var(--yellow); }
+  .b-done { background: #0a1a0a; color: var(--green); }
+  .b-error { background: #1a0505; color: var(--red); }
+  .f-dl { width: 100%; padding: 4px; background: #fff; border: none; color: #000; font-size: 0.54rem; border-radius: 4px; cursor: pointer; font-family: 'Syne', sans-serif; font-weight: 700; margin-top: 2px; display: none; }
+  .f-dl:hover { opacity: 0.82; }
+  canvas { display: none; }
+
+  /* ══════════════════════════════════════
+     TAB 2 — KLING LAUNCHER
+  ══════════════════════════════════════ */
+  .kling-stats { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  .stat-pill { display: flex; align-items: center; gap: 5px; font-size: 0.62rem; color: var(--muted); }
+  .stat-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .jobs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+  .job-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; transition: border-color 0.2s; }
+  .job-card.running { border-color: #3a3000; }
+  .job-card.done { border-color: #0a2a0a; }
+  .job-card.error { border-color: #2a0a0a; }
+  .job-card.queued { border-color: #0a1a2a; }
+  .card-top { display: flex; }
+  .card-img { width: 90px; flex-shrink: 0; background: #0a0a0a; position: relative; overflow: hidden; min-height: 130px; }
+  .card-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .card-img-ph { width: 100%; height: 100%; min-height: 130px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: var(--muted2); }
+  .img-ov { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; pointer-events: none; }
+  .img-ov.running { background: rgba(0,0,0,0.6); }
+  .img-ov.done { background: rgba(0,0,0,0.25); }
+  .img-ov.err { background: rgba(0,0,0,0.5); }
+  .k-spinner { width: 22px; height: 22px; border: 2px solid #333; border-top-color: var(--yellow); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  .card-right { flex: 1; display: flex; flex-direction: column; padding: 10px 12px; gap: 8px; min-width: 0; }
+  .card-meta { display: flex; align-items: center; gap: 7px; }
+  .card-num { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 0.65rem; color: var(--muted); }
+  .card-name { font-size: 0.62rem; color: #666; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+  .k-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted2); flex-shrink: 0; transition: background 0.3s; }
+  .k-dot.running { background: var(--yellow); animation: pulse 1.2s ease-in-out infinite; box-shadow: 0 0 6px var(--yellow); }
+  .k-dot.done { background: var(--green); } .k-dot.error { background: var(--red); } .k-dot.queued { background: var(--blue); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .prompt-label { font-size: 0.54rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; display: flex; align-items: center; justify-content: space-between; }
+  .use-def { background: none; border: 1px solid var(--border2); color: var(--muted); font-family: 'DM Mono', monospace; font-size: 0.5rem; padding: 2px 6px; border-radius: 4px; cursor: pointer; transition: all 0.12s; }
+  .use-def:hover { border-color: #555; color: #aaa; }
+  .card-prompt { font-size: 0.65rem; min-height: 54px; line-height: 1.55; }
+  .card-footer { display: flex; align-items: center; justify-content: space-between; padding: 7px 12px; border-top: 1px solid var(--border); background: #0a0a0a; gap: 8px; }
+  .card-taskid { font-size: 0.55rem; color: #2a2a2a; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .btn-remove { background: none; border: none; color: #2a2a2a; font-size: 0.9rem; cursor: pointer; transition: color 0.15s; padding: 0 3px; }
+  .btn-remove:hover { color: var(--red); }
+  .btn-dl { background: var(--green); color: #000; font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.6rem; padding: 5px 12px; border: none; border-radius: 6px; cursor: pointer; text-decoration: none; display: none; white-space: nowrap; }
+  .btn-dl:hover { opacity: 0.85; }
+  .empty-state { grid-column: 1/-1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 50px 20px; gap: 8px; color: var(--muted); border: 1.5px dashed var(--border); border-radius: 12px; }
+  .empty-state .ei { font-size: 2rem; } .empty-state .et { font-size: 0.68rem; }
+
+  ::-webkit-scrollbar { width: 3px; height: 3px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #1e1e1e; border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-logo">CLAIR<span>.</span>TOOLS</div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('extract')">🎬 Extract + Clean</button>
+    <button class="tab" onclick="switchTab('kling')">🚀 Kling Launcher</button>
+    <button class="tab" onclick="switchTab('nano')">🍌 Nano Launcher</button>
+  </div>
+</div>
+
+<!-- ══ TAB 1: EXTRACT + CLEAN ══ -->
+<div class="page active" id="page-extract">
+
+  <div class="panel">
+    <div class="panel-title">Settings</div>
+    <div class="row">
+      <div class="field"><label>Frame Interval</label>
+        <select id="frameInterval"><option value="0.5" selected>Every 0.5s</option><option value="1">Every 1s</option><option value="2">Every 2s</option><option value="3">Every 3s</option></select>
+      </div>
+      <div class="field"><label>Resolution</label>
+        <select id="resolution"><option value="1K" selected>1K</option><option value="2K">2K</option><option value="4K">4K</option></select>
+      </div>
+      <div class="field"><label>Aspect Ratio</label>
+        <select id="aspect"><option value="9:16" selected>9:16</option><option value="1:1">1:1</option><option value="16:9">16:9</option><option value="auto">Auto</option></select>
+      </div>
+      <div class="field"><label>Kie API Key</label>
+        <input type="text" id="ec-apiKey" value="d85e9167b389e5ac0065bef98597f80c">
+      </div>
+    </div>
+    <div class="field" style="margin-top:10px"><label>Caption Removal Prompt</label>
+      <textarea id="ec-prompt">Remove all text, captions, and subtitles from this image. Fill the area with the background content seamlessly. Keep everything else exactly the same.</textarea>
+    </div>
+  </div>
+
+  <div class="drop-zone" id="ec-drop">
+    <input type="file" id="ec-file" accept="video/*,image/*" multiple>
+    <div class="drop-icon">🎬</div>
+    <div class="drop-text"><b>Drop videos or images here</b> or click to browse</div>
+  </div>
+  <div class="video-queue" id="ec-queue"></div>
+
+  <div class="toolbar">
+    <div class="spacer"></div>
+    <button class="btn btn-white" id="ec-processBtn" disabled>🚀 Process All</button>
+  </div>
+
+  <div class="video-sections" id="ec-sections"></div>
+  <canvas id="ec-canvas"></canvas>
+</div>
+
+<!-- ══ TAB 2: KLING LAUNCHER ══ -->
+<div class="page" id="page-kling">
+
+  <div class="panel">
+    <div class="row" style="justify-content:space-between; align-items:center; margin-bottom:10px">
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:0.9rem">Kling 3 Pro · Image to Video</div>
+      <div class="kling-stats">
+        <div class="stat-pill"><div class="stat-dot" style="background:#2a2a2a"></div><span id="cnt-idle">0</span> idle</div>
+        <div class="stat-pill"><div class="stat-dot" style="background:var(--yellow)"></div><span id="cnt-run">0</span> running</div>
+        <div class="stat-pill"><div class="stat-dot" style="background:var(--green)"></div><span id="cnt-done">0</span> done</div>
+        <div class="stat-pill"><div class="stat-dot" style="background:var(--red)"></div><span id="cnt-err">0</span> err</div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field" style="max-width:260px"><label>Kie API Key</label><input type="text" id="kl-apiKey" value="d85e9167b389e5ac0065bef98597f80c"></div>
+      <div class="field" style="max-width:90px"><label>Duration</label>
+        <select id="kl-duration"><option value="10" selected>10s</option><option value="5">5s</option></select>
+      </div>
+      <div class="field" style="max-width:100px"><label>Mode</label>
+        <select id="kl-mode"><option value="pro" selected>Pro</option><option value="std">Standard</option><option value="4k">4K</option></select>
+      </div>
+      <div class="field" style="max-width:90px"><label>Aspect</label>
+        <select id="kl-aspect"><option value="9:16" selected>9:16</option><option value="16:9">16:9</option><option value="1:1">1:1</option></select>
+      </div>
+      <div class="field" style="max-width:100px"><label>Sound</label>
+        <select id="kl-sound"><option value="false" selected>No Sound</option><option value="true">Sound</option></select>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Default Prompt — auto-filled on each card (edit per card below)</div>
+    <textarea id="kl-defaultPrompt">Woman laying in bed recording a casual storytime selfie video, holding phone with hand causing slight natural camera shake, head resting on pink pillow, cozy bedroom setting, realistic handheld motion, no text, no subtitles, no captions, no words, no typography, no letters, clean video only.</textarea>
+  </div>
+
+  <div class="drop-zone" id="kl-drop">
+    <input type="file" id="kl-file" accept="image/*" multiple>
+    <div class="drop-icon">🖼</div>
+    <div class="drop-text"><b>Drop images here</b> or click to browse<br>Each image → its own card with editable prompt</div>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn btn-danger" id="kl-clearDone">Clear Done</button>
+    <button class="btn btn-danger" id="kl-clearAll">Clear All</button>
+    <div class="spacer"></div>
+    <button class="btn btn-yellow" id="kl-launch" disabled>🚀 Launch All</button>
+  </div>
+
+  <div class="jobs-grid" id="kl-grid">
+    <div class="empty-state" id="kl-empty">
+      <div class="ei">🎬</div>
+      <div class="et">Drop images above — each gets a card with editable prompt</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TAB 3: NANO LAUNCHER ══ -->
+<div class="page" id="page-nano">
+
+  <div class="panel">
+    <div class="row" style="justify-content:space-between; align-items:center; margin-bottom:10px">
+      <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:0.9rem">Nano Banana 2 · Image Edit (per-image prompts)</div>
+      <div class="kling-stats">
+        <div class="stat-pill"><div class="stat-dot" style="background:#2a2a2a"></div><span id="nb-cnt-idle">0</span> idle</div>
+        <div class="stat-pill"><div class="stat-dot" style="background:var(--yellow)"></div><span id="nb-cnt-run">0</span> running</div>
+        <div class="stat-pill"><div class="stat-dot" style="background:var(--green)"></div><span id="nb-cnt-done">0</span> done</div>
+        <div class="stat-pill"><div class="stat-dot" style="background:var(--red)"></div><span id="nb-cnt-err">0</span> err</div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field" style="max-width:260px"><label>Kie API Key</label><input type="text" id="nb-apiKey" value="d85e9167b389e5ac0065bef98597f80c"></div>
+      <div class="field" style="max-width:100px"><label>Aspect</label>
+        <select id="nb-aspect"><option value="9:16" selected>9:16</option><option value="1:1">1:1</option><option value="16:9">16:9</option><option value="auto">Auto</option></select>
+      </div>
+      <div class="field" style="max-width:100px"><label>Resolution</label>
+        <select id="nb-resolution"><option value="1K" selected>1K</option><option value="2K">2K</option><option value="4K">4K</option></select>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Default Prompt — auto-filled on each card (edit per card below)</div>
+    <textarea id="nb-defaultPrompt">Outpaint this image to fill the canvas. Extend the existing background naturally with photorealistic detail. Maintain original image quality, composition, lighting, and color tone. No text, no captions, no watermarks, no UI elements.</textarea>
+  </div>
+
+  <div class="drop-zone" id="nb-drop">
+    <input type="file" id="nb-file" accept="image/*" multiple>
+    <div class="drop-icon">🍌</div>
+    <div class="drop-text"><b>Drop images here</b> or click to browse<br>Each image → its own card with editable prompt</div>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn btn-danger" id="nb-clearDone">Clear Done</button>
+    <button class="btn btn-danger" id="nb-clearAll">Clear All</button>
+    <div class="spacer"></div>
+    <button class="btn btn-yellow" id="nb-launch" disabled>🚀 Launch All</button>
+  </div>
+
+  <div class="jobs-grid" id="nb-grid">
+    <div class="empty-state" id="nb-empty">
+      <div class="ei">🍌</div>
+      <div class="et">Drop images above — each gets a card with editable prompt</div>
+    </div>
+  </div>
+</div>
+
+<!-- SHARED LOG -->
+<div class="log-bar" id="logBar">
+  <div class="log-toggle" id="logToggle">▲ LOG</div>
+  <div class="log-scroll" id="logScroll">
+    <div class="log-line info"><span class="ts">--:--:--</span> <span class="msg">Ready.</span></div>
+  </div>
+</div>
+
+<script>
+// ══ TAB SWITCH ══
+function switchTab(t) {
+  document.querySelectorAll('.tab').forEach((b,i) => b.classList.toggle('active', ['extract','kling','nano'][i]===t));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-'+t).classList.add('active');
+}
+
+// ══ SHARED LOG ══
+let logOpen = false;
+function log(msg, type='info') {
+  const now = new Date();
+  const ts = [now.getHours(),now.getMinutes(),now.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':');
+  const scroll = document.getElementById('logScroll');
+  const line = document.createElement('div');
+  line.className = `log-line ${type}`;
+  line.innerHTML = `<span class="ts">${ts}</span> <span class="msg">${msg}</span>`;
+  scroll.appendChild(line);
+  scroll.scrollTop = scroll.scrollHeight;
+  if (!logOpen) document.getElementById('logToggle').textContent = `▲ LOG — ${msg.slice(0,80)}`;
+}
+document.getElementById('logToggle').addEventListener('click', () => {
+  logOpen = !logOpen;
+  document.getElementById('logBar').classList.toggle('open', logOpen);
+  document.getElementById('logToggle').textContent = logOpen ? '▼ LOG' : '▲ LOG';
+});
+
+const UPLOAD_URL = 'https://kieai.redpandaai.co/api/file-stream-upload';
+const CREATE_URL = 'https://api.kie.ai/api/v1/jobs/createTask';
+const POLL_URL   = 'https://api.kie.ai/api/v1/jobs/recordInfo';
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+// ══════════════════════════════════════
+// TAB 1 — EXTRACT + CLEAN
+// ══════════════════════════════════════
+const ecCanvas = document.getElementById('ec-canvas');
+const ecCtx = ecCanvas.getContext('2d');
+let ecFiles = [];
+
+const ecDrop = document.getElementById('ec-drop');
+const ecFile = document.getElementById('ec-file');
+ecDrop.addEventListener('click', () => ecFile.click());
+ecDrop.addEventListener('dragover', e => { e.preventDefault(); ecDrop.classList.add('dragover'); });
+ecDrop.addEventListener('dragleave', () => ecDrop.classList.remove('dragover'));
+ecDrop.addEventListener('drop', e => { e.preventDefault(); ecDrop.classList.remove('dragover'); addEcFiles([...e.dataTransfer.files].filter(f=>f.type.startsWith('video/')||f.type.startsWith('image/'))); });
+ecFile.addEventListener('change', () => { addEcFiles([...ecFile.files].filter(f=>f.type.startsWith('video/')||f.type.startsWith('image/'))); ecFile.value=''; });
+
+function addEcFiles(files) {
+  files.forEach(f => {
+    if (ecFiles.find(v=>v.file.name===f.name&&v.file.size===f.size)) return;
+    const id = 'ec'+Date.now()+Math.random().toString(36).slice(2,5);
+    const isImage = f.type.startsWith('image/');
+    ecFiles.push({file:f,id,isImage});
+    const q = document.getElementById('ec-queue');
+    const div = document.createElement('div');
+    div.className='vid-item'; div.id='qi-'+id;
+    div.innerHTML=`<div class="vid-name">${isImage?'🖼 ':'🎬 '}${f.name}</div><div class="vid-size">${(f.size/1024/1024).toFixed(1)}MB</div><button class="vid-remove" data-id="${id}">×</button>`;
+    div.querySelector('.vid-remove').addEventListener('click',()=>{ecFiles=ecFiles.filter(v=>v.id!==id);div.remove();document.getElementById('ec-processBtn').disabled=ecFiles.length===0;});
+    q.appendChild(div);
+  });
+  document.getElementById('ec-processBtn').disabled = ecFiles.length===0;
+}
+
+document.getElementById('ec-processBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('ec-processBtn');
+  btn.disabled=true;
+  const count = parseFloat(document.getElementById('frameInterval').value);
+  for (const vid of ecFiles) {
+    if (vid.isImage) await ecProcessImage(vid);
+    else await ecProcessVideo(vid, count);
+  }
+  btn.disabled = ecFiles.length===0;
+});
+
+async function ecProcessImage(vid) {
+  const {file,id} = vid;
+  const name = file.name.replace(/\.[^.]+$/,'');
+  const sec = ecMakeSection(id, '🖼 '+file.name, false);
+  const frames = {};
+  const dataUrl = await fileToDataUrl(file);
+  const blob = await (await fetch(dataUrl)).blob();
+  const fid = id+'_f0';
+  frames[fid]={fid,idx:0,blob,dataUrl,time:0,status:'raw',resultUrl:null,resultDataUrl:null};
+  ecAddCard(id,fid,frames[fid],name);
+  ecUpdateStats(id,frames);
+  const card = document.getElementById('card-'+fid);
+  if(card) card.classList.add('selected');
+  document.getElementById('clean-'+id).disabled=false;
+  document.getElementById('clean-'+id).addEventListener('click', async()=>{
+    const prompt=document.getElementById('ec-prompt').value;
+    const aspect=document.getElementById('aspect').value;
+    const resolution=document.getElementById('resolution').value;
+    const apiKey=document.getElementById('ec-apiKey').value.trim();
+    document.getElementById('clean-'+id).disabled=true;
+    ecSetProg(id,0,'Sending to Kie...');
+    frames[fid].status='cleaning'; card.classList.remove('selected');
+    ecRefreshCard(fid,frames[fid],name);
+    try {
+      const fileUrl=await ecUpload(apiKey,frames[fid].blob,file.name);
+      const taskId=await ecCreateTask(apiKey,prompt,fileUrl,aspect,resolution);
+      const result=await ecPollTask(taskId,apiKey);
+      frames[fid].resultUrl=result;
+      frames[fid].resultDataUrl=await imgToDataUrl(result);
+      frames[fid].status='done';
+    } catch(e){console.error(e);frames[fid].status='error';}
+    ecSetProg(id,100,frames[fid].status==='done'?'Done! ↓ Download.':'Error — try again.');
+    ecRefreshCard(fid,frames[fid],name);
+    ecUpdateStats(id,frames);
+    document.getElementById('clean-'+id).disabled=false;
+  });
+}
+
+async function ecProcessVideo(vid, interval) {
+  const {file,id} = vid;
+  const name = file.name.replace(/\.[^.]+$/,'');
+  const sec = ecMakeSection(id, file.name, true);
+  const frames = {};
+  const extracted = await ecExtractFrames(file, interval, (i,n) => ecSetProg(id,(i/n)*100,`Extracting frame ${i} of ${n}...`));
+  extracted.forEach((f,i) => {
+    const fid=id+'_f'+i;
+    frames[fid]={fid,idx:i,blob:f.blob,dataUrl:f.dataUrl,time:f.time,status:'raw',resultUrl:null,resultDataUrl:null};
+    ecAddCard(id,fid,frames[fid],name);
+  });
+  ecSetProg(id,100,`${extracted.length} frames extracted — select to clean.`);
+  ecUpdateStats(id,frames);
+  const section = document.getElementById('sec-'+id);
+  document.getElementById('selall-'+id).addEventListener('click',()=>{section.querySelectorAll('.f-card:not(.cleaning)').forEach(c=>c.classList.add('selected'));ecUpdateStats(id,frames);});
+  document.getElementById('clrsel-'+id).addEventListener('click',()=>{section.querySelectorAll('.f-card').forEach(c=>c.classList.remove('selected'));ecUpdateStats(id,frames);});
+  document.getElementById('clean-'+id).addEventListener('click', async()=>{
+    const selected=[...section.querySelectorAll('.f-card.selected')];
+    if(!selected.length) return;
+    const prompt=document.getElementById('ec-prompt').value;
+    const aspect=document.getElementById('aspect').value;
+    const resolution=document.getElementById('resolution').value;
+    const apiKey=document.getElementById('ec-apiKey').value.trim();
+    document.getElementById('clean-'+id).disabled=true;
+    ecSetProg(id,0,`Sending ${selected.length} frames...`);
+    let done=0;
+    await Promise.allSettled(selected.map(async card=>{
+      const fid=card.id.replace('card-','');
+      const frame=frames[fid];
+      frame.status='cleaning'; card.classList.remove('selected');
+      ecRefreshCard(fid,frame,name); ecUpdateStats(id,frames);
+      try {
+        const fileUrl=await ecUpload(apiKey,frame.blob,`frame_${frame.idx}.png`);
+        const taskId=await ecCreateTask(apiKey,prompt,fileUrl,aspect,resolution);
+        const result=await ecPollTask(taskId,apiKey);
+        frame.resultUrl=result; frame.resultDataUrl=await imgToDataUrl(result); frame.status='done';
+      } catch(e){console.error(e);frame.status='error';}
+      done++; ecSetProg(id,(done/selected.length)*100,`Cleaned ${done} of ${selected.length}...`);
+      ecRefreshCard(fid,frame,name); ecUpdateStats(id,frames);
+    }));
+    ecSetProg(id,100,'Done!');
+    document.getElementById('clean-'+id).disabled=false;
+  });
+}
+
+function ecMakeSection(id, title, hasSelectBtns) {
+  const sections = document.getElementById('ec-sections');
+  const sec = document.createElement('div');
+  sec.className='video-section'; sec.id='sec-'+id;
+  sec.innerHTML=`
+    <div class="vsec-header">
+      <div class="vsec-name">${title}</div>
+      <div class="vsec-actions">
+        <div class="vsec-stats" id="stats-${id}"></div>
+        ${hasSelectBtns?`<button class="btn btn-outline" id="selall-${id}" style="padding:5px 10px;font-size:0.6rem">All</button><button class="btn btn-outline" id="clrsel-${id}" style="padding:5px 10px;font-size:0.6rem">Clear</button>`:''}
+        <button class="btn btn-green" id="clean-${id}" disabled style="padding:5px 12px;font-size:0.62rem">✨ Clean</button>
+      </div>
+    </div>
+    <div class="prog-wrap"><div class="prog-bg"><div class="prog-fill" id="progfill-${id}"></div></div><div class="prog-label" id="proglabel-${id}">Ready.</div></div>
+    <div class="frame-grid" id="grid-${id}"></div>
+  `;
+  sections.appendChild(sec);
+  return sec;
+}
+
+function ecAddCard(secId, fid, frame, videoName) {
+  const grid = document.getElementById('grid-'+secId);
+  const card = document.createElement('div');
+  card.id='card-'+fid; card.className='f-card';
+  card.innerHTML=`
+    <div class="f-thumb-wrap"><img class="f-thumb" src="${frame.dataUrl}"><div class="f-check">✓</div></div>
+    <div class="f-info"><div class="f-ts">${formatTime(frame.time)}</div><div class="f-badge b-raw" id="badge-${fid}">raw</div><button class="f-dl" id="dl-${fid}">↓ Download</button></div>
+  `;
+  grid.appendChild(card);
+  card.querySelector('.f-thumb-wrap').addEventListener('click',()=>{
+    if(frame.status==='cleaning') return;
+    card.classList.toggle('selected');
+    const sec=document.getElementById('sec-'+secId);
+    const cleanBtn=document.getElementById('clean-'+secId);
+    if(cleanBtn) cleanBtn.disabled=[...sec.querySelectorAll('.f-card.selected')].length===0;
+  });
+  document.getElementById('dl-'+fid).addEventListener('click',e=>{
+    e.stopPropagation();
+    if(frame.resultDataUrl) dlDataUrl(frame.resultDataUrl,`${videoName}_f${frame.idx+1}_clean.png`);
+  });
+}
+
+function ecRefreshCard(fid, frame, videoName) {
+  const card=document.getElementById('card-'+fid); if(!card) return;
+  card.className='f-card '+frame.status+(card.classList.contains('selected')?' selected':'');
+  const img=card.querySelector('.f-thumb');
+  if(img) img.src=(frame.status==='done'&&frame.resultUrl)?frame.resultUrl:frame.dataUrl;
+  card.querySelectorAll('.f-spinner,.f-done-overlay').forEach(e=>e.remove());
+  const tw=card.querySelector('.f-thumb-wrap');
+  if(frame.status==='cleaning'){const s=document.createElement('div');s.className='f-spinner';s.innerHTML='<div class="f-spin"></div>';tw.appendChild(s);}
+  if(frame.status==='done'){const o=document.createElement('div');o.className='f-done-overlay';o.textContent='✅';tw.appendChild(o);}
+  const badge=document.getElementById('badge-'+fid);
+  if(badge){const m={raw:'b-raw',cleaning:'b-cleaning',done:'b-done',error:'b-error'};badge.className='f-badge '+(m[frame.status]||'b-raw');badge.textContent=frame.status;}
+  const dl=document.getElementById('dl-'+fid);
+  if(dl) dl.style.display=frame.resultDataUrl?'block':'none';
+}
+
+function ecUpdateStats(secId, frames) {
+  const all=Object.values(frames);
+  const c={raw:0,cleaning:0,done:0,error:0};
+  all.forEach(f=>c[f.status]++);
+  const el=document.getElementById('stats-'+secId);
+  if(el) el.innerHTML=`<div class="stat"><div class="stat-dot2" style="background:#333"></div>${c.raw}</div><div class="stat"><div class="stat-dot2" style="background:var(--yellow)"></div>${c.cleaning}</div><div class="stat"><div class="stat-dot2" style="background:var(--green)"></div>${c.done}</div>${c.error?`<div class="stat"><div class="stat-dot2" style="background:var(--red)"></div>${c.error}</div>`:''}`;
+  const cleanBtn=document.getElementById('clean-'+secId);
+  const sec=document.getElementById('sec-'+secId);
+  if(cleanBtn&&!cleanBtn.disabled&&sec) cleanBtn.disabled=[...sec.querySelectorAll('.f-card.selected')].length===0;
+}
+
+function ecSetProg(id,pct,label){
+  const f=document.getElementById('progfill-'+id); if(f) f.style.width=pct+'%';
+  const l=document.getElementById('proglabel-'+id); if(l) l.textContent=label;
+}
+
+async function ecExtractFrames(file, interval, onProg) {
+  return new Promise(resolve=>{
+    const url=URL.createObjectURL(file);
+    const vid=document.createElement('video');
+    vid.muted=true; vid.preload='metadata'; vid.src=url;
+    vid.addEventListener('loadedmetadata', async()=>{
+      ecCanvas.width=vid.videoWidth||1080; ecCanvas.height=vid.videoHeight||1920;
+      const dur=vid.duration;
+      const times=[];
+      for(let t=0; t<dur; t+=interval) times.push(parseFloat(t.toFixed(2)));
+      const results=[];
+      for(let i=0;i<times.length;i++){
+        onProg(i+1,times.length);
+        const dataUrl=await ecSeekCapture(vid,times[i]);
+        const blob=await(await fetch(dataUrl)).blob();
+        results.push({blob,dataUrl,time:times[i]});
+      }
+      vid.src=''; URL.revokeObjectURL(url); resolve(results);
+    },{once:true});
+  });
+}
+
+function ecSeekCapture(vid,time){
+  return new Promise(resolve=>{
+    vid.addEventListener('seeked',()=>{ecCtx.drawImage(vid,0,0,ecCanvas.width,ecCanvas.height);resolve(ecCanvas.toDataURL('image/png'));},{once:true});
+    vid.currentTime=time;
+  });
+}
+
+async function ecUpload(apiKey, blob, filename) {
+  const fd=new FormData(); fd.append('file',blob,filename); fd.append('uploadPath','images/user-uploads');
+  const res=await fetch(UPLOAD_URL,{method:'POST',headers:{'Authorization':`Bearer ${apiKey}`},body:fd});
+  const data=await res.json();
+  const url=data.data?.fileUrl||data.data?.downloadUrl;
+  if(!url) throw new Error('Upload failed: '+JSON.stringify(data));
+  return url;
+}
+
+async function ecCreateTask(apiKey, prompt, fileUrl, aspect, resolution) {
+  const res=await fetch(CREATE_URL,{method:'POST',headers:{'Authorization':`Bearer ${apiKey}`,'Content-Type':'application/json'},body:JSON.stringify({model:'nano-banana-2',input:{prompt,image_input:[fileUrl],aspect_ratio:aspect,resolution,output_format:'png'}})});
+  const data=await res.json();
+  const id=data.data?.taskId||data.taskId||data.data?.id;
+  if(!id) throw new Error('No taskId: '+JSON.stringify(data));
+  return id;
+}
+
+async function ecPollTask(taskId, apiKey) {
+  for(let i=0;i<120;i++){
+    await sleep(3000);
+    const res=await fetch(`${POLL_URL}?taskId=${taskId}`,{headers:{'Authorization':`Bearer ${apiKey}`}});
+    const data=await res.json();
+    const state=(data.data?.state||data.data?.status||'').toLowerCase();
+    if(['success','completed','finished','succeed'].includes(state)){
+      try{const rj=JSON.parse(data.data?.resultJson||'{}');if(Array.isArray(rj.resultUrls)&&rj.resultUrls.length>0)return rj.resultUrls[0];}catch(e){}
+      const out=data.data?.output||data.output;
+      if(Array.isArray(out)&&out.length>0)return out[0];
+      if(typeof out==='string')return out;
+      throw new Error('No output URL');
+    }
+    if(['failed','error','fail'].includes(state))throw new Error('Task failed');
+  }
+  throw new Error('Timed out');
+}
+
+function fileToDataUrl(file){return new Promise(resolve=>{const r=new FileReader();r.onload=e=>resolve(e.target.result);r.readAsDataURL(file);});}
+async function imgToDataUrl(url){return new Promise(resolve=>{const img=new Image();img.crossOrigin='anonymous';img.onload=()=>{try{const c=document.createElement('canvas');c.width=img.naturalWidth;c.height=img.naturalHeight;c.getContext('2d').drawImage(img,0,0);resolve(c.toDataURL('image/png'));}catch(e){resolve(null);}};img.onerror=()=>resolve(null);img.src=url+(url.includes('?')?'&':'?')+'cb='+Date.now();});}
+function dlDataUrl(dataUrl,filename){const a=document.createElement('a');a.href=dataUrl;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);}
+function formatTime(s){const m=Math.floor(s/60),sec=(s%60).toFixed(1);return m>0?`${m}:${sec.padStart(4,'0')}`:`${sec}s`;}
+
+// ══════════════════════════════════════
+// TAB 2 — KLING LAUNCHER
+// ══════════════════════════════════════
+let klJobs = [];
+
+const klDrop = document.getElementById('kl-drop');
+const klFile = document.getElementById('kl-file');
+klDrop.addEventListener('click', () => klFile.click());
+klDrop.addEventListener('dragover', e => { e.preventDefault(); klDrop.classList.add('dragover'); });
+klDrop.addEventListener('dragleave', () => klDrop.classList.remove('dragover'));
+klDrop.addEventListener('drop', e => { e.preventDefault(); klDrop.classList.remove('dragover'); [...e.dataTransfer.files].filter(f=>f.type.startsWith('image/')).forEach(klAddJob); });
+klFile.addEventListener('change', () => { [...klFile.files].filter(f=>f.type.startsWith('image/')).forEach(klAddJob); klFile.value=''; });
+
+function klAddJob(file) {
+  const id='kl'+Date.now()+Math.random().toString(36).slice(2,5);
+  const prompt=document.getElementById('kl-defaultPrompt').value;
+  const job={id,file,dataUrl:null,prompt,status:'idle',taskId:null,resultUrl:null};
+  klJobs.push(job);
+  const reader=new FileReader();
+  reader.onload=e=>{job.dataUrl=e.target.result;const p=document.getElementById('imgpanel-'+id);if(p)p.innerHTML=`<img src="${job.dataUrl}" alt="">`;};
+  reader.readAsDataURL(file);
+  klRenderCard(job);
+  klUpdateEmpty(); klUpdateStats(); klUpdateBtn();
+  log(`Kling: Added ${file.name}`);
+}
+
+function klRenderCard(job) {
+  const idx=klJobs.indexOf(job)+1;
+  const card=document.createElement('div');
+  card.className='job-card'; card.id='card-'+job.id;
+  card.innerHTML=`
+    <div class="card-top">
+      <div class="card-img" id="imgpanel-${job.id}"><div class="card-img-ph">🖼</div></div>
+      <div class="card-right">
+        <div class="card-meta">
+          <div class="card-num">#${idx}</div>
+          <div class="k-dot" id="dot-${job.id}"></div>
+          <div class="card-name">${job.file.name}</div>
+        </div>
+        <div class="prompt-label">Prompt<button class="use-def" id="usedef-${job.id}">↩ Default</button></div>
+        <textarea class="card-prompt" id="prompt-${job.id}">${job.prompt}</textarea>
+      </div>
+    </div>
+    <div class="card-footer">
+      <div class="card-taskid" id="taskid-${job.id}">—</div>
+      <a class="btn-dl" id="dl-${job.id}">↓ Download</a>
+      <button class="btn-remove" id="rm-${job.id}">✕</button>
+    </div>
+  `;
+  document.getElementById('kl-grid').appendChild(card);
+  document.getElementById('prompt-'+job.id).addEventListener('input',e=>{job.prompt=e.target.value;});
+  document.getElementById('usedef-'+job.id).addEventListener('click',()=>{job.prompt=document.getElementById('kl-defaultPrompt').value;document.getElementById('prompt-'+job.id).value=job.prompt;});
+  document.getElementById('rm-'+job.id).addEventListener('click',()=>{if(job.status==='running')return;klJobs=klJobs.filter(j=>j.id!==job.id);card.remove();klUpdateEmpty();klUpdateStats();klUpdateBtn();});
+}
+
+function klSetStatus(id,status,extra={}) {
+  const job=klJobs.find(j=>j.id===id); if(!job) return;
+  job.status=status;
+  if(extra.taskId) job.taskId=extra.taskId;
+  if(extra.resultUrl) job.resultUrl=extra.resultUrl;
+  const card=document.getElementById('card-'+id);
+  if(card) card.className='job-card '+status;
+  const dot=document.getElementById('dot-'+id);
+  if(dot) dot.className='k-dot '+status;
+  const taskEl=document.getElementById('taskid-'+id);
+  if(taskEl&&job.taskId) taskEl.textContent=job.taskId;
+  const panel=document.getElementById('imgpanel-'+id);
+  if(panel){
+    panel.querySelectorAll('.img-ov').forEach(e=>e.remove());
+    if(status==='running'){const ov=document.createElement('div');ov.className='img-ov running';ov.innerHTML='<div class="k-spinner"></div>';panel.appendChild(ov);}
+    else if(status==='done'){const ov=document.createElement('div');ov.className='img-ov done';ov.textContent='✅';panel.appendChild(ov);}
+    else if(status==='error'){const ov=document.createElement('div');ov.className='img-ov err';ov.textContent='❌';panel.appendChild(ov);}
+  }
+  if(extra.resultUrl){const dl=document.getElementById('dl-'+id);if(dl){dl.href=extra.resultUrl;dl.target='_blank';dl.style.display='inline-block';}}
+  klUpdateStats();
+}
+
+function klUpdateStats(){
+  const c={idle:0,running:0,done:0,error:0,queued:0};
+  klJobs.forEach(j=>c[j.status]=(c[j.status]||0)+1);
+  document.getElementById('cnt-idle').textContent=c.idle+(c.queued||0);
+  document.getElementById('cnt-run').textContent=c.running;
+  document.getElementById('cnt-done').textContent=c.done;
+  document.getElementById('cnt-err').textContent=c.error;
+}
+function klUpdateEmpty(){document.getElementById('kl-empty').style.display=klJobs.length?'none':'flex';}
+function klUpdateBtn(){
+  const n=klJobs.filter(j=>j.status==='idle').length;
+  const btn=document.getElementById('kl-launch');
+  btn.disabled=n===0;
+  btn.textContent=n>0?`🚀 Launch ${n} Job${n>1?'s':''}`:'🚀 Launch All';
+}
+
+document.getElementById('kl-clearDone').addEventListener('click',()=>{klJobs.filter(j=>j.status==='done'||j.status==='error').forEach(j=>{klJobs=klJobs.filter(x=>x.id!==j.id);document.getElementById('card-'+j.id)?.remove();});klUpdateEmpty();klUpdateStats();klUpdateBtn();});
+document.getElementById('kl-clearAll').addEventListener('click',()=>{klJobs.filter(j=>j.status!=='running').forEach(j=>{klJobs=klJobs.filter(x=>x.id!==j.id);document.getElementById('card-'+j.id)?.remove();});klUpdateEmpty();klUpdateStats();klUpdateBtn();});
+
+document.getElementById('kl-launch').addEventListener('click',()=>{
+  const ready=klJobs.filter(j=>j.status==='idle');
+  if(!ready.length) return;
+  log(`Kling: Launching ${ready.length} job(s) simultaneously...`,'warn');
+  ready.forEach(j=>klSetStatus(j.id,'queued'));
+  ready.forEach(j=>klRunJob(j.id));
+  klUpdateBtn();
+});
+
+async function klRunJob(id) {
+  const job=klJobs.find(j=>j.id===id); if(!job) return;
+  const idx=klJobs.indexOf(job)+1;
+  const apiKey=document.getElementById('kl-apiKey').value.trim();
+  const duration=parseInt(document.getElementById('kl-duration').value);
+  const mode=document.getElementById('kl-mode').value;
+  const aspect=document.getElementById('kl-aspect').value;
+  const sound=document.getElementById('kl-sound').value==='true';
+  klSetStatus(id,'running');
+  log(`Kling #${idx} ${job.file.name} — uploading...`);
+  try {
+    const fileUrl=await ecUpload(apiKey,job.file,job.file.name);
+    log(`Kling #${idx} — uploaded ✓`);
+    const taskId=await klCreateTask(apiKey,job.prompt,fileUrl,duration,mode,aspect,sound);
+    klSetStatus(id,'running',{taskId});
+    log(`Kling #${idx} — task: ${taskId}`);
+    const resultUrl=await klPollTask(apiKey,taskId,s=>log(`Kling #${idx} — ${s}`));
+    klSetStatus(id,'done',{resultUrl});
+    log(`Kling #${idx} — ✅ done`,'ok');
+  } catch(e){klSetStatus(id,'error');log(`Kling #${idx} — ❌ ${e.message}`,'err');}
+  klUpdateBtn();
+}
+
+async function klCreateTask(apiKey,prompt,imageUrl,duration,mode,aspect,sound){
+  const res=await fetch(CREATE_URL,{method:'POST',headers:{'Authorization':`Bearer ${apiKey}`,'Content-Type':'application/json'},body:JSON.stringify({model:'kling-3.0/video',input:{prompt,image_urls:[imageUrl],duration:String(duration),mode,aspect_ratio:aspect,sound,multi_shots:false}})});
+  const data=await res.json();
+  const taskId=data.data?.taskId||data.taskId||data.data?.id;
+  if(!taskId) throw new Error('No taskId: '+JSON.stringify(data));
+  return taskId;
+}
+
+async function klPollTask(apiKey,taskId,onUpdate){
+  for(let i=0;i<180;i++){
+    await sleep(5000);
+    const res=await fetch(`${POLL_URL}?taskId=${taskId}`,{headers:{'Authorization':`Bearer ${apiKey}`}});
+    const data=await res.json();
+    const state=(data.data?.state||data.data?.status||'').toLowerCase();
+    onUpdate(`polling state=${state} (${i+1})`);
+    if(['success','completed','finished','succeed'].includes(state)){
+      try{const rj=JSON.parse(data.data?.resultJson||'{}');if(Array.isArray(rj.resultUrls)&&rj.resultUrls.length)return rj.resultUrls[0];}catch(e){}
+      const out=data.data?.output||data.output;
+      if(Array.isArray(out)&&out.length)return out[0];
+      if(typeof out==='string')return out;
+      throw new Error('No output URL');
+    }
+    if(['failed','error','fail'].includes(state))throw new Error('Task failed');
+  }
+  throw new Error('Timed out');
+}
+
+klUpdateEmpty(); klUpdateStats();
+
+// ══════════════════════════════════════
+// TAB 3 — NANO BANANA LAUNCHER
+// ══════════════════════════════════════
+let nbJobs = [];
+
+const nbDrop = document.getElementById('nb-drop');
+const nbFile = document.getElementById('nb-file');
+nbDrop.addEventListener('click', () => nbFile.click());
+nbDrop.addEventListener('dragover', e => { e.preventDefault(); nbDrop.classList.add('dragover'); });
+nbDrop.addEventListener('dragleave', () => nbDrop.classList.remove('dragover'));
+nbDrop.addEventListener('drop', e => { e.preventDefault(); nbDrop.classList.remove('dragover'); [...e.dataTransfer.files].filter(f=>f.type.startsWith('image/')).forEach(nbAddJob); });
+nbFile.addEventListener('change', () => { [...nbFile.files].filter(f=>f.type.startsWith('image/')).forEach(nbAddJob); nbFile.value=''; });
+
+function nbAddJob(file) {
+  const id='nb'+Date.now()+Math.random().toString(36).slice(2,5);
+  const prompt=document.getElementById('nb-defaultPrompt').value;
+  const job={id,file,dataUrl:null,prompt,status:'idle',taskId:null,resultUrl:null,resultDataUrl:null};
+  nbJobs.push(job);
+  const reader=new FileReader();
+  reader.onload=e=>{job.dataUrl=e.target.result;const p=document.getElementById('imgpanel-'+id);if(p)p.innerHTML=`<img src="${job.dataUrl}" alt="">`;};
+  reader.readAsDataURL(file);
+  nbRenderCard(job);
+  nbUpdateEmpty(); nbUpdateStats(); nbUpdateBtn();
+  log(`Nano: Added ${file.name}`);
+}
+
+function nbRenderCard(job) {
+  const idx=nbJobs.indexOf(job)+1;
+  const card=document.createElement('div');
+  card.className='job-card'; card.id='card-'+job.id;
+  card.innerHTML=`
+    <div class="card-top">
+      <div class="card-img" id="imgpanel-${job.id}"><div class="card-img-ph">🖼</div></div>
+      <div class="card-right">
+        <div class="card-meta">
+          <div class="card-num">#${idx}</div>
+          <div class="k-dot" id="dot-${job.id}"></div>
+          <div class="card-name">${job.file.name}</div>
+        </div>
+        <div class="prompt-label">Prompt<button class="use-def" id="usedef-${job.id}">↩ Default</button></div>
+        <textarea class="card-prompt" id="prompt-${job.id}">${job.prompt}</textarea>
+      </div>
+    </div>
+    <div class="card-footer">
+      <div class="card-taskid" id="taskid-${job.id}">—</div>
+      <a class="btn-dl" id="dl-${job.id}">↓ Download</a>
+      <button class="btn-remove" id="rm-${job.id}">✕</button>
+    </div>
+  `;
+  document.getElementById('nb-grid').appendChild(card);
+  document.getElementById('prompt-'+job.id).addEventListener('input',e=>{job.prompt=e.target.value;});
+  document.getElementById('usedef-'+job.id).addEventListener('click',()=>{job.prompt=document.getElementById('nb-defaultPrompt').value;document.getElementById('prompt-'+job.id).value=job.prompt;});
+  document.getElementById('rm-'+job.id).addEventListener('click',()=>{if(job.status==='running')return;nbJobs=nbJobs.filter(j=>j.id!==job.id);card.remove();nbUpdateEmpty();nbUpdateStats();nbUpdateBtn();});
+}
+
+function nbSetStatus(id,status,extra={}) {
+  const job=nbJobs.find(j=>j.id===id); if(!job) return;
+  job.status=status;
+  if(extra.taskId) job.taskId=extra.taskId;
+  if(extra.resultUrl) job.resultUrl=extra.resultUrl;
+  if(extra.resultDataUrl) job.resultDataUrl=extra.resultDataUrl;
+  const card=document.getElementById('card-'+id);
+  if(card) card.className='job-card '+status;
+  const dot=document.getElementById('dot-'+id);
+  if(dot) dot.className='k-dot '+status;
+  const taskEl=document.getElementById('taskid-'+id);
+  if(taskEl&&job.taskId) taskEl.textContent=job.taskId;
+  const panel=document.getElementById('imgpanel-'+id);
+  if(panel){
+    panel.querySelectorAll('.img-ov').forEach(e=>e.remove());
+    if(status==='running'){const ov=document.createElement('div');ov.className='img-ov running';ov.innerHTML='<div class="k-spinner"></div>';panel.appendChild(ov);}
+    else if(status==='done'){const ov=document.createElement('div');ov.className='img-ov done';ov.textContent='✅';panel.appendChild(ov);}
+    else if(status==='error'){const ov=document.createElement('div');ov.className='img-ov err';ov.textContent='❌';panel.appendChild(ov);}
+    if(status==='done' && job.resultUrl){const img=panel.querySelector('img');if(img) img.src=job.resultUrl;}
+  }
+  if(extra.resultUrl){
+    const dl=document.getElementById('dl-'+id);
+    if(dl){
+      dl.href=job.resultDataUrl||extra.resultUrl;
+      dl.download=job.file.name.replace(/\.[^.]+$/,'')+'_nano.png';
+      dl.style.display='inline-block';
+    }
+  }
+  nbUpdateStats();
+}
+
+function nbUpdateStats(){
+  const c={idle:0,running:0,done:0,error:0,queued:0};
+  nbJobs.forEach(j=>c[j.status]=(c[j.status]||0)+1);
+  document.getElementById('nb-cnt-idle').textContent=c.idle+(c.queued||0);
+  document.getElementById('nb-cnt-run').textContent=c.running;
+  document.getElementById('nb-cnt-done').textContent=c.done;
+  document.getElementById('nb-cnt-err').textContent=c.error;
+}
+function nbUpdateEmpty(){document.getElementById('nb-empty').style.display=nbJobs.length?'none':'flex';}
+function nbUpdateBtn(){
+  const n=nbJobs.filter(j=>j.status==='idle').length;
+  const btn=document.getElementById('nb-launch');
+  btn.disabled=n===0;
+  btn.textContent=n>0?`🚀 Launch ${n} Job${n>1?'s':''}`:'🚀 Launch All';
+}
+
+document.getElementById('nb-clearDone').addEventListener('click',()=>{nbJobs.filter(j=>j.status==='done'||j.status==='error').forEach(j=>{nbJobs=nbJobs.filter(x=>x.id!==j.id);document.getElementById('card-'+j.id)?.remove();});nbUpdateEmpty();nbUpdateStats();nbUpdateBtn();});
+document.getElementById('nb-clearAll').addEventListener('click',()=>{nbJobs.filter(j=>j.status!=='running').forEach(j=>{nbJobs=nbJobs.filter(x=>x.id!==j.id);document.getElementById('card-'+j.id)?.remove();});nbUpdateEmpty();nbUpdateStats();nbUpdateBtn();});
+
+document.getElementById('nb-launch').addEventListener('click',()=>{
+  const ready=nbJobs.filter(j=>j.status==='idle');
+  if(!ready.length) return;
+  log(`Nano: Launching ${ready.length} job(s) simultaneously...`,'warn');
+  ready.forEach(j=>nbSetStatus(j.id,'queued'));
+  ready.forEach(j=>nbRunJob(j.id));
+  nbUpdateBtn();
+});
+
+async function nbRunJob(id) {
+  const job=nbJobs.find(j=>j.id===id); if(!job) return;
+  const idx=nbJobs.indexOf(job)+1;
+  const apiKey=document.getElementById('nb-apiKey').value.trim();
+  const aspect=document.getElementById('nb-aspect').value;
+  const resolution=document.getElementById('nb-resolution').value;
+  nbSetStatus(id,'running');
+  log(`Nano #${idx} ${job.file.name} — uploading...`);
+  try {
+    const fileUrl=await ecUpload(apiKey,job.file,job.file.name);
+    log(`Nano #${idx} — uploaded ✓`);
+    const taskId=await ecCreateTask(apiKey,job.prompt,fileUrl,aspect,resolution);
+    nbSetStatus(id,'running',{taskId});
+    log(`Nano #${idx} — task: ${taskId}`);
+    const resultUrl=await ecPollTask(taskId,apiKey);
+    const resultDataUrl=await imgToDataUrl(resultUrl);
+    nbSetStatus(id,'done',{resultUrl,resultDataUrl});
+    log(`Nano #${idx} — ✅ done`,'ok');
+  } catch(e){nbSetStatus(id,'error');log(`Nano #${idx} — ❌ ${e.message}`,'err');}
+  nbUpdateBtn();
+}
+
+nbUpdateEmpty(); nbUpdateStats();
+</script>
+</body>
+</html>
